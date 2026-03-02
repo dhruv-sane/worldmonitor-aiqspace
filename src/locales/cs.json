@@ -184,6 +184,7 @@
     "macroSignals": "Tržní radar",
     "etfFlows": "Sledování BTC ETF",
     "stablecoins": "Stablecoiny",
+    "deduction": "Dedukce situace",
     "ucdpEvents": "UCDP Konflikty",
     "giving": "Globální dárcovství",
     "displacement": "UNHCR Vysídlení",
@@ -217,6 +218,39 @@
     "gulfIndices": "Indexy Perského zálivu",
     "gulfCurrencies": "Měny Perského zálivu",
     "gulfOil": "Ropa Perského zálivu"
+  },
+  "commands": {
+    "prefixes": {
+      "map": "Mapa",
+      "panel": "Panel",
+      "brief": "Shrnutí"
+    },
+    "categories": {
+      "navigate": "Navigace",
+      "layers": "Vrstvy",
+      "panels": "Panely",
+      "view": "Zobrazení",
+      "actions": "Akce",
+      "country": "Země"
+    },
+    "regions": {
+      "global": "Globální pohled",
+      "mena": "Blízký východ a severní Afrika",
+      "eu": "Evropa",
+      "asia": "Asie a Tichomoří",
+      "america": "Amerika",
+      "africa": "Afrika",
+      "latam": "Latinská Amerika",
+      "oceania": "Oceánie"
+    },
+    "tips": {
+      "map": "Zadejte název země pro přelet na mapě",
+      "panel": "Zadejte název panelu pro posun na něj",
+      "brief": "Zadejte název země pro zpravodajský přehled",
+      "layers": "Zadejte \"military\" nebo \"finance\" pro přednastavení vrstev",
+      "time": "Zadejte \"1h\", \"24h\" nebo \"7d\" pro filtrování podle času",
+      "settings": "Zadejte \"dark mode\", \"settings\" nebo \"fullscreen\""
+    }
   },
   "modals": {
     "search": {
@@ -1456,6 +1490,7 @@
       "restoreDefaults": "Obnovit výchozí kanály",
       "availableChannels": "Dostupné kanály",
       "customChannel": "Vlastní kanál",
+      "regionAll": "Vše",
       "regionNorthAmerica": "Severní Amerika",
       "regionEurope": "Evropa",
       "regionLatinAmerica": "Latinská Amerika",

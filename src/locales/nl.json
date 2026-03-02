@@ -48,6 +48,7 @@
     "regulation": "Dashboard voor AI-regulering",
     "serviceStatus": "Servicestatus",
     "stablecoins": "Stabiele munten",
+    "deduction": "Situatie afleiden",
     "events": "Technische evenementen",
     "techHubs": "Hottech-hubs",
     "techReadiness": "Tech Readiness-index",
@@ -72,6 +73,39 @@
     "gulfIndices": "Golfindices",
     "gulfCurrencies": "Golfvaluta",
     "gulfOil": "Golfolie"
+  },
+  "commands": {
+    "prefixes": {
+      "map": "Kaart",
+      "panel": "Paneel",
+      "brief": "Samenvatting"
+    },
+    "categories": {
+      "navigate": "Navigeren",
+      "layers": "Lagen",
+      "panels": "Panelen",
+      "view": "Weergave",
+      "actions": "Acties",
+      "country": "Land"
+    },
+    "regions": {
+      "global": "Globaal overzicht",
+      "mena": "Midden-Oosten & Noord-Afrika",
+      "eu": "Europa",
+      "asia": "Azië-Pacific",
+      "america": "Amerika",
+      "africa": "Afrika",
+      "latam": "Latijns-Amerika",
+      "oceania": "Oceanië"
+    },
+    "tips": {
+      "map": "Typ een landnaam om ernaartoe te vliegen op de kaart",
+      "panel": "Typ een paneelnaam om ernaartoe te scrollen",
+      "brief": "Typ een landnaam voor een inlichtingenbriefing",
+      "layers": "Typ \"military\" of \"finance\" voor laagpresets",
+      "time": "Typ \"1h\", \"24h\" of \"7d\" om te filteren op tijd",
+      "settings": "Typ \"dark mode\", \"settings\" of \"fullscreen\""
+    }
   },
   "modals": {
     "search": {
@@ -1224,6 +1258,7 @@
       "restoreDefaults": "Standaardkanalen herstellen",
       "availableChannels": "Beschikbare kanalen",
       "customChannel": "Aangepast kanaal",
+      "regionAll": "Alle",
       "regionNorthAmerica": "Noord-Amerika",
       "regionEurope": "Europa",
       "regionLatinAmerica": "Latijns-Amerika",

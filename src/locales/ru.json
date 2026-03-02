@@ -183,6 +183,7 @@
     "macroSignals": "Рыночный радар",
     "etfFlows": "Трекер BTC ETF",
     "stablecoins": "Стейблкоины",
+    "deduction": "Оценка ситуации",
     "ucdpEvents": "Конфликтные события UCDP",
     "displacement": "Перемещение населения UNHCR",
     "climate": "Климатические аномалии",
@@ -217,6 +218,39 @@
     "gulfIndices": "Индексы Залива",
     "gulfCurrencies": "Валюты Залива",
     "gulfOil": "Нефть Залива"
+  },
+  "commands": {
+    "prefixes": {
+      "map": "Карта",
+      "panel": "Панель",
+      "brief": "Сводка"
+    },
+    "categories": {
+      "navigate": "Навигация",
+      "layers": "Слои",
+      "panels": "Панели",
+      "view": "Вид",
+      "actions": "Действия",
+      "country": "Страна"
+    },
+    "regions": {
+      "global": "Глобальный обзор",
+      "mena": "Ближний Восток и Северная Африка",
+      "eu": "Европа",
+      "asia": "Азиатско-Тихоокеанский регион",
+      "america": "Америка",
+      "africa": "Африка",
+      "latam": "Латинская Америка",
+      "oceania": "Океания"
+    },
+    "tips": {
+      "map": "Введите название страны, чтобы перелететь к ней на карте",
+      "panel": "Введите название панели, чтобы прокрутить к ней",
+      "brief": "Введите название страны для разведывательной сводки",
+      "layers": "Введите \"military\" или \"finance\" для пресетов слоёв",
+      "time": "Введите \"1h\", \"24h\" или \"7d\" для фильтрации по времени",
+      "settings": "Введите \"dark mode\", \"settings\" или \"fullscreen\""
+    }
   },
   "modals": {
     "search": {
@@ -1369,6 +1403,7 @@
       "restoreDefaults": "Восстановить каналы по умолчанию",
       "availableChannels": "Доступные каналы",
       "customChannel": "Пользовательский канал",
+      "regionAll": "Все",
       "regionNorthAmerica": "Северная Америка",
       "regionEurope": "Европа",
       "regionLatinAmerica": "Латинская Америка",

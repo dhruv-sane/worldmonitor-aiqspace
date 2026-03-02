@@ -182,6 +182,7 @@
     "macroSignals": "Markt-Radar",
     "etfFlows": "BTC ETF-Tracker",
     "stablecoins": "Stablecoins",
+    "deduction": "Lagebeurteilung",
     "ucdpEvents": "UCDP Konfliktereignisse",
     "giving": "Globale Spenden",
     "supplyChain": "Lieferkette",
@@ -217,6 +218,39 @@
     "gulfIndices": "Golf-Indizes",
     "gulfCurrencies": "Golf-Währungen",
     "gulfOil": "Golf-Öl"
+  },
+  "commands": {
+    "prefixes": {
+      "map": "Karte",
+      "panel": "Panel",
+      "brief": "Kurzübersicht"
+    },
+    "categories": {
+      "navigate": "Navigieren",
+      "layers": "Ebenen",
+      "panels": "Panels",
+      "view": "Ansicht",
+      "actions": "Aktionen",
+      "country": "Land"
+    },
+    "regions": {
+      "global": "Globale Ansicht",
+      "mena": "Naher Osten & Nordafrika",
+      "eu": "Europa",
+      "asia": "Asien-Pazifik",
+      "america": "Amerika",
+      "africa": "Afrika",
+      "latam": "Lateinamerika",
+      "oceania": "Ozeanien"
+    },
+    "tips": {
+      "map": "Geben Sie einen Ländernamen ein, um dorthin auf der Karte zu fliegen",
+      "panel": "Geben Sie einen Panelnamen ein, um dorthin zu scrollen",
+      "brief": "Geben Sie einen Ländernamen für ein Nachrichtenbriefing ein",
+      "layers": "Geben Sie \"military\" oder \"finance\" für Ebenen-Voreinstellungen ein",
+      "time": "Geben Sie \"1h\", \"24h\" oder \"7d\" ein, um nach Zeit zu filtern",
+      "settings": "Geben Sie \"dark mode\", \"settings\" oder \"fullscreen\" ein"
+    }
   },
   "modals": {
     "search": {
@@ -1421,6 +1455,7 @@
       "restoreDefaults": "Standardkanäle wiederherstellen",
       "availableChannels": "Verfügbare Kanäle",
       "customChannel": "Benutzerdefinierter Kanal",
+      "regionAll": "Alle",
       "regionNorthAmerica": "Nordamerika",
       "regionEurope": "Europa",
       "regionLatinAmerica": "Lateinamerika",

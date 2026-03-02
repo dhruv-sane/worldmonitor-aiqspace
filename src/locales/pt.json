@@ -48,6 +48,7 @@
     "regulation": "Painel de regulamentação de IA",
     "serviceStatus": "Status do serviço",
     "stablecoins": "Moedas estáveis",
+    "deduction": "Deduzir situação",
     "events": "Eventos tecnológicos",
     "techHubs": "Centros de tecnologia importantes",
     "techReadiness": "Índice de prontidão tecnológica",
@@ -72,6 +73,39 @@
     "gulfIndices": "Índices do Golfo",
     "gulfCurrencies": "Moedas do Golfo",
     "gulfOil": "Petróleo do Golfo"
+  },
+  "commands": {
+    "prefixes": {
+      "map": "Mapa",
+      "panel": "Painel",
+      "brief": "Resumo"
+    },
+    "categories": {
+      "navigate": "Navegar",
+      "layers": "Camadas",
+      "panels": "Painéis",
+      "view": "Vista",
+      "actions": "Ações",
+      "country": "País"
+    },
+    "regions": {
+      "global": "Vista global",
+      "mena": "Médio Oriente e Norte de África",
+      "eu": "Europa",
+      "asia": "Ásia-Pacífico",
+      "america": "Américas",
+      "africa": "África",
+      "latam": "América Latina",
+      "oceania": "Oceânia"
+    },
+    "tips": {
+      "map": "Digite o nome de um país para voar até lá no mapa",
+      "panel": "Digite o nome de um painel para rolar até ele",
+      "brief": "Digite o nome de um país para um resumo de inteligência",
+      "layers": "Digite \"military\" ou \"finance\" para predefinições de camadas",
+      "time": "Digite \"1h\", \"24h\" ou \"7d\" para filtrar por tempo",
+      "settings": "Digite \"dark mode\", \"settings\" ou \"fullscreen\""
+    }
   },
   "modals": {
     "search": {
@@ -1224,6 +1258,7 @@
       "restoreDefaults": "Restaurar canais padrão",
       "availableChannels": "Canais disponíveis",
       "customChannel": "Canal personalizado",
+      "regionAll": "Todos",
       "regionNorthAmerica": "América do Norte",
       "regionEurope": "Europa",
       "regionLatinAmerica": "América Latina",

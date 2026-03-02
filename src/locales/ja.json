@@ -183,6 +183,7 @@
     "macroSignals": "マーケットレーダー",
     "etfFlows": "BTC ETFトラッカー",
     "stablecoins": "ステーブルコイン",
+    "deduction": "状況推定",
     "ucdpEvents": "UCDP紛争イベント",
     "displacement": "UNHCR避難民",
     "climate": "気候異常",
@@ -217,6 +218,39 @@
     "gulfIndices": "湾岸指数",
     "gulfCurrencies": "湾岸通貨",
     "gulfOil": "湾岸石油"
+  },
+  "commands": {
+    "prefixes": {
+      "map": "マップ",
+      "panel": "パネル",
+      "brief": "概要"
+    },
+    "categories": {
+      "navigate": "ナビゲート",
+      "layers": "レイヤー",
+      "panels": "パネル",
+      "view": "ビュー",
+      "actions": "アクション",
+      "country": "国"
+    },
+    "regions": {
+      "global": "グローバルビュー",
+      "mena": "中東・北アフリカ",
+      "eu": "ヨーロッパ",
+      "asia": "アジア太平洋",
+      "america": "アメリカ大陸",
+      "africa": "アフリカ",
+      "latam": "ラテンアメリカ",
+      "oceania": "オセアニア"
+    },
+    "tips": {
+      "map": "国名を入力して地図上でその場所に移動",
+      "panel": "パネル名を入力してスクロール",
+      "brief": "国名を入力してインテリジェンスブリーフを表示",
+      "layers": "\"military\" または \"finance\" と入力してレイヤープリセットを適用",
+      "time": "\"1h\"、\"24h\"、\"7d\" と入力して時間でフィルター",
+      "settings": "\"dark mode\"、\"settings\"、\"fullscreen\" と入力"
+    }
   },
   "modals": {
     "search": {
@@ -1369,6 +1403,7 @@
       "restoreDefaults": "デフォルトのチャンネルを復元",
       "availableChannels": "利用可能なチャンネル",
       "customChannel": "カスタムチャンネル",
+      "regionAll": "すべて",
       "regionNorthAmerica": "北米",
       "regionEurope": "ヨーロッパ",
       "regionLatinAmerica": "中南米",

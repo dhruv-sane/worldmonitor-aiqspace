@@ -39,7 +39,10 @@ import {
   trackMapViewChange,
   trackMapLayerToggle,
   trackPanelToggled,
+  trackDownloadClicked,
 } from '@/services/analytics';
+import { detectPlatform, allButtons, buttonsForPlatform } from '@/components/DownloadBanner';
+import type { Platform } from '@/components/DownloadBanner';
 import { invokeTauri } from '@/services/tauri-bridge';
 import { dataFreshness } from '@/services/data-freshness';
 import { mlWorker } from '@/services/ml-worker';
@@ -187,6 +190,8 @@ export class EventHandlerManager implements AppModule {
         this.setCopyLinkFeedback(button, 'Copy failed');
       }
     });
+
+    this.initDownloadDropdown();
 
     window.addEventListener('storage', (e) => {
       if (e.key === STORAGE_KEYS.panels && e.newValue) {
@@ -380,6 +385,85 @@ export class EventHandlerManager implements AppModule {
     document.body.removeChild(textarea);
   }
 
+  private platformLabel(p: Platform): string {
+    switch (p) {
+      case 'macos-arm64': return '\uF8FF Silicon';
+      case 'macos-x64': return '\uF8FF Intel';
+      case 'macos': return '\uF8FF macOS';
+      case 'windows': return 'Windows';
+      case 'linux': return 'Linux';
+      default: return t('header.downloadApp');
+    }
+  }
+
+  private initDownloadDropdown(): void {
+    const btn = document.getElementById('downloadBtn');
+    const dropdown = document.getElementById('downloadDropdown');
+    const label = document.getElementById('downloadBtnLabel');
+    if (!btn || !dropdown) return;
+
+    const platform = detectPlatform();
+    if (label) label.textContent = this.platformLabel(platform);
+
+    const primary = buttonsForPlatform(platform);
+    const all = allButtons();
+    const others = all.filter(b => !primary.some(p => p.href === b.href));
+
+    const renderDropdown = () => {
+      const primaryHtml = primary.map(b =>
+        `<a class="dl-dd-btn ${b.cls} primary" href="${b.href}">${b.label}</a>`
+      ).join('');
+      const othersHtml = others.map(b =>
+        `<a class="dl-dd-btn ${b.cls}" href="${b.href}">${b.label}</a>`
+      ).join('');
+
+      dropdown.innerHTML = `
+        <div class="dl-dd-tagline">${t('modals.downloadBanner.description')}</div>
+        <div class="dl-dd-buttons">${primaryHtml}</div>
+        ${others.length ? `<button class="dl-dd-toggle" id="dlDdToggle">${t('modals.downloadBanner.showAllPlatforms')}</button>
+        <div class="dl-dd-others" id="dlDdOthers">${othersHtml}</div>` : ''}
+      `;
+
+      dropdown.querySelectorAll<HTMLAnchorElement>('.dl-dd-btn').forEach(a => {
+        a.addEventListener('click', (e) => {
+          e.preventDefault();
+          const plat = new URL(a.href, location.origin).searchParams.get('platform') || 'unknown';
+          trackDownloadClicked(plat);
+          window.open(a.href, '_blank');
+          dropdown.classList.remove('open');
+        });
+      });
+
+      const toggle = dropdown.querySelector('#dlDdToggle');
+      const othersEl = dropdown.querySelector('#dlDdOthers') as HTMLElement | null;
+      if (toggle && othersEl) {
+        toggle.addEventListener('click', () => {
+          const showing = othersEl.classList.toggle('show');
+          toggle.textContent = showing
+            ? t('modals.downloadBanner.showLess')
+            : t('modals.downloadBanner.showAllPlatforms');
+        });
+      }
+    };
+
+    renderDropdown();
+
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      dropdown.classList.toggle('open');
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!dropdown.contains(e.target as Node) && !btn.contains(e.target as Node)) {
+        dropdown.classList.remove('open');
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') dropdown.classList.remove('open');
+    });
+  }
+
   private setCopyLinkFeedback(button: HTMLElement | null, message: string): void {
     if (!button) return;
     const originalText = button.textContent ?? '';
@@ -432,10 +516,6 @@ export class EventHandlerManager implements AppModule {
 
   setupStatusPanel(): void {
     this.ctx.statusPanel = new StatusPanel();
-    const headerLeft = this.ctx.container.querySelector('.header-left');
-    if (headerLeft) {
-      headerLeft.appendChild(this.ctx.statusPanel.getElement());
-    }
   }
 
   setupPizzIntIndicator(): void {
@@ -493,7 +573,12 @@ export class EventHandlerManager implements AppModule {
       getAllSourceNames: () => this.getAllSourceNames(),
       getLocalizedPanelName: (key: string, fallback: string) => this.getLocalizedPanelName(key, fallback),
       isDesktopApp: this.ctx.isDesktopApp,
+      statusPanel: this.ctx.statusPanel,
     });
+
+    if (this.ctx.statusPanel) {
+      this.ctx.statusPanel.onUpdate = () => this.ctx.unifiedSettings?.refreshStatusTab();
+    }
 
     const mount = document.getElementById('unifiedSettingsMount');
     if (mount) {
@@ -641,7 +726,7 @@ export class EventHandlerManager implements AppModule {
     const resizeHandle = document.getElementById('mapResizeHandle');
     if (!mapSection || !resizeHandle) return;
 
-    const getMinHeight = () => (window.innerWidth >= 2000 ? 320 : 400);
+    const getMinHeight = () => (window.innerWidth >= 2000 ? 320 : 350);
     const getMaxHeight = () => Math.max(getMinHeight(), window.innerHeight - 60);
 
     const savedHeight = localStorage.getItem('map-height');
@@ -662,10 +747,21 @@ export class EventHandlerManager implements AppModule {
     let startY = 0;
     let startHeight = 0;
 
+    const endResize = () => {
+      if (!isResizing) return;
+      isResizing = false;
+      this.ctx.map?.setIsResizing(false);
+      this.ctx.map?.render();
+      mapSection.classList.remove('resizing');
+      document.body.style.cursor = '';
+      localStorage.setItem('map-height', mapSection.style.height);
+    };
+
     resizeHandle.addEventListener('mousedown', (e) => {
       isResizing = true;
       startY = e.clientY;
       startHeight = mapSection.offsetHeight;
+      this.ctx.map?.setIsResizing(true);
       mapSection.classList.add('resizing');
       document.body.style.cursor = 'ns-resize';
       e.preventDefault();
@@ -676,16 +772,12 @@ export class EventHandlerManager implements AppModule {
       const deltaY = e.clientY - startY;
       const newHeight = Math.max(getMinHeight(), Math.min(startHeight + deltaY, getMaxHeight()));
       mapSection.style.height = `${newHeight}px`;
-      this.ctx.map?.render();
     });
 
-    document.addEventListener('mouseup', () => {
-      if (!isResizing) return;
-      isResizing = false;
-      mapSection.classList.remove('resizing');
-      document.body.style.cursor = '';
-      localStorage.setItem('map-height', mapSection.style.height);
-      this.ctx.map?.render();
+    document.addEventListener('mouseup', endResize);
+    window.addEventListener('blur', endResize);
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) endResize();
     });
   }
 
