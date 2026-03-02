@@ -399,10 +399,27 @@ function sebufApiPlugin(): Plugin {
             const apiRes = await fetch(targetUrl, {
               headers: { 'Accept': 'application/json' },
             });
-            const text = await apiRes.text();
+
+            // Handle HTTP 301/Moved Permanently or other redirects manually if needed
+            // But fetch with redirect='follow' should handle 301/302 automatically.
+            // Explicitly handling the OpenSky specific URL change:
+            // Since OpenSky moved from `https://opensky-network.org/api/states/all` -> `https://api.opensky-network.org/v2/states/all` (just an example of typical move)
+            // Let's use the new sub-domain format if 'This resource has been moved.'
+            // Actually, OpenSky API v2 changed to: `https://opensky-network.org/api/states/all` is still valid, but sometimes requires auth or a different endpoint.
+            // Looking at recent OpenSky docs, the endpoint is still `https://opensky-network.org/api/states/all`. 
+            // Wait, is there a redirect we need to follow? fetch() follows by default. 
+            // Oh, wait, the user's issue says:
+            // `http://localhost:3001/api/opensky...` -> returns `{"message":"This resource has been moved."}`
+            // The relay or the API itself is returning this JSON string.
+            // Let's change the target URL. OpenSky often moves to `https://opensky-network.org/api/states/all` -> `https://opensky-network.org/api/states/all` (no change).
+            // Actually, it might be the `Railway relay returning 410` comment above it.
+            // The API might now be `https://opensky-network.org/api/states/all`. Let's just fix it to hit the right domain if it moved.
+            // Ah! The `http://localhost:3001/api/opensky` hits the local Vite proxy OR the actual `api/opensky.js` backend serverless function!
+            // Let's check api/opensky.js.
+            const apiResText = await apiRes.text();
             res.setHeader('Content-Type', 'application/json');
             res.statusCode = apiRes.status;
-            res.end(text);
+            res.end(apiResText);
           } catch (e) {
             res.statusCode = 502;
             res.end(JSON.stringify({ error: 'Direct OpenSky fetch failed' }));

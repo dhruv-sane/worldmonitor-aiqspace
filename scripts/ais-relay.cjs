@@ -429,7 +429,7 @@ async function pollTelegramOnce() {
         telegramPermanentlyDisabled = true;
         telegramState.lastError = 'session invalidated (AUTH_KEY_DUPLICATED) — generate a new TELEGRAM_SESSION';
         console.error('[Relay] Telegram session permanently invalidated (AUTH_KEY_DUPLICATED). Generate a new session with: node scripts/telegram/session-auth.mjs');
-        try { telegramState.client?.disconnect(); } catch {}
+        try { telegramState.client?.disconnect(); } catch { }
         telegramState.client = null;
         break;
       }
@@ -601,7 +601,7 @@ async function orefFetchAlerts() {
       return sum + h.alerts.reduce((s, a) => s + (Array.isArray(a.data) ? a.data.length : 1), 0);
     }, 0);
 
-    orefPersistHistory().catch(() => {});
+    orefPersistHistory().catch(() => { });
   } catch (err) {
     const stderr = err.stderr ? err.stderr.toString().trim() : '';
     orefState.lastError = redactOrefError(stderr || err.message);
@@ -615,7 +615,7 @@ async function orefBootstrapHistoryFromUpstream() {
   try {
     raw = orefCurlFetch(OREF_PROXY_AUTH, OREF_HISTORY_URL, { toFile: tmpFile });
   } finally {
-    try { require('fs').unlinkSync(tmpFile); } catch {}
+    try { require('fs').unlinkSync(tmpFile); } catch { }
   }
   const cleaned = stripBom(raw).trim();
   if (!cleaned || cleaned === '[]') return;
@@ -735,7 +735,7 @@ async function orefBootstrapHistoryWithRetry() {
     try {
       await orefBootstrapHistoryFromUpstream();
       if (UPSTASH_ENABLED) {
-        await orefPersistHistory().catch(() => {});
+        await orefPersistHistory().catch(() => { });
       }
       console.log(`[Relay] OREF upstream bootstrap succeeded on attempt ${attempt}`);
       return;
@@ -1893,22 +1893,32 @@ async function _fetchOpenSkyToken(clientId, clientSecret) {
 
 // Promisified upstream OpenSky fetch (single request)
 function _openskyRawFetch(url, token) {
-  return new Promise((resolve) => {
-    const request = https.get(url, {
-      family: 4,
-      headers: {
-        'Accept': 'application/json',
-        'User-Agent': 'WorldMonitor/1.0',
-        'Authorization': `Bearer ${token}`,
-      },
-      timeout: 15000,
-    }, (response) => {
-      let data = '';
-      response.on('data', chunk => data += chunk);
-      response.on('end', () => resolve({ status: response.statusCode || 502, data }));
-    });
-    request.on('error', (err) => resolve({ status: 0, data: null, error: err }));
-    request.on('timeout', () => { request.destroy(); resolve({ status: 504, data: null, error: new Error('timeout') }); });
+  return new Promise(async (resolve) => {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'WorldMonitor/1.0',
+          'Authorization': `Bearer ${token}`,
+        },
+        signal: controller.signal,
+        redirect: 'follow', // Ensures we follow OpenSky redirects
+      });
+
+      clearTimeout(timeoutId);
+      const data = await response.text();
+      resolve({ status: response.status, data });
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        resolve({ status: 504, data: null, error: new Error('timeout') });
+      } else {
+        resolve({ status: 0, data: null, error: err });
+      }
+    }
   });
 }
 
@@ -1927,7 +1937,7 @@ function openskyQueuedFetch(url, token) {
     openskyLastUpstreamTime = Date.now();
     return _openskyRawFetch(url, token);
   });
-  openskyUpstreamQueue = job.catch(() => {});
+  openskyUpstreamQueue = job.catch(() => { });
   return job;
 }
 
@@ -2161,11 +2171,11 @@ function handleWorldBankRequest(req, res) {
       'NE.EXP.GNFS.ZS': 'Exports of Goods & Services (% of GDP)',
     };
     const defaultCountries = [
-      'USA','CHN','JPN','DEU','KOR','GBR','IND','ISR','SGP','TWN',
-      'FRA','CAN','SWE','NLD','CHE','FIN','IRL','AUS','BRA','IDN',
-      'ARE','SAU','QAT','BHR','EGY','TUR','MYS','THA','VNM','PHL',
-      'ESP','ITA','POL','CZE','DNK','NOR','AUT','BEL','PRT','EST',
-      'MEX','ARG','CHL','COL','ZAF','NGA','KEN',
+      'USA', 'CHN', 'JPN', 'DEU', 'KOR', 'GBR', 'IND', 'ISR', 'SGP', 'TWN',
+      'FRA', 'CAN', 'SWE', 'NLD', 'CHE', 'FIN', 'IRL', 'AUS', 'BRA', 'IDN',
+      'ARE', 'SAU', 'QAT', 'BHR', 'EGY', 'TUR', 'MYS', 'THA', 'VNM', 'PHL',
+      'ESP', 'ITA', 'POL', 'CZE', 'DNK', 'NOR', 'AUT', 'BEL', 'PRT', 'EST',
+      'MEX', 'ARG', 'CHL', 'COL', 'ZAF', 'NGA', 'KEN',
     ];
     const body = JSON.stringify({ indicators, defaultCountries });
     worldbankCache.set(cacheKey, { data: body, timestamp: Date.now() });
@@ -2187,11 +2197,11 @@ function handleWorldBankRequest(req, res) {
   const countries = wbParams.get('countries');
   const years = parseInt(wbParams.get('years') || '5', 10);
   let countryList = country || (countries ? countries.split(',').join(';') : [
-    'USA','CHN','JPN','DEU','KOR','GBR','IND','ISR','SGP','TWN',
-    'FRA','CAN','SWE','NLD','CHE','FIN','IRL','AUS','BRA','IDN',
-    'ARE','SAU','QAT','BHR','EGY','TUR','MYS','THA','VNM','PHL',
-    'ESP','ITA','POL','CZE','DNK','NOR','AUT','BEL','PRT','EST',
-    'MEX','ARG','CHL','COL','ZAF','NGA','KEN',
+    'USA', 'CHN', 'JPN', 'DEU', 'KOR', 'GBR', 'IND', 'ISR', 'SGP', 'TWN',
+    'FRA', 'CAN', 'SWE', 'NLD', 'CHE', 'FIN', 'IRL', 'AUS', 'BRA', 'IDN',
+    'ARE', 'SAU', 'QAT', 'BHR', 'EGY', 'TUR', 'MYS', 'THA', 'VNM', 'PHL',
+    'ESP', 'ITA', 'POL', 'CZE', 'DNK', 'NOR', 'AUT', 'BEL', 'PRT', 'EST',
+    'MEX', 'ARG', 'CHL', 'COL', 'ZAF', 'NGA', 'KEN',
   ].join(';'));
 
   const currentYear = new Date().getFullYear();
@@ -2655,7 +2665,7 @@ function handleYouTubeLiveRequest(req, res) {
             const json = JSON.stringify({ channelName: data.author_name || null, title: data.title || null, videoId: videoIdParam });
             ytLiveCache.set(cacheKey, { json, ts: Date.now() });
             return sendCompressed(req, res, 200, { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=3600' }, json);
-          } catch {}
+          } catch { }
         }
         sendCompressed(req, res, 200, { 'Content-Type': 'application/json' },
           JSON.stringify({ channelName: null, title: null, videoId: videoIdParam }));
@@ -3171,128 +3181,128 @@ const server = http.createServer(async (req, res) => {
       logThrottled('log', `rss-miss:${feedUrl}`, '[Relay] RSS request (MISS):', feedUrl);
 
       const fetchPromise = new Promise((resolveInFlight, rejectInFlight) => {
-      let responseHandled = false;
+        let responseHandled = false;
 
-      const sendError = (statusCode, message) => {
-        if (responseHandled || res.headersSent) return;
-        responseHandled = true;
-        res.writeHead(statusCode, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: message }));
-        rejectInFlight(new Error(message));
-      };
+        const sendError = (statusCode, message) => {
+          if (responseHandled || res.headersSent) return;
+          responseHandled = true;
+          res.writeHead(statusCode, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: message }));
+          rejectInFlight(new Error(message));
+        };
 
-      const fetchWithRedirects = (url, redirectCount = 0) => {
-        if (redirectCount > 3) {
-          return sendError(502, 'Too many redirects');
-        }
-
-        const conditionalHeaders = {};
-        if (rssCached?.etag) conditionalHeaders['If-None-Match'] = rssCached.etag;
-        if (rssCached?.lastModified) conditionalHeaders['If-Modified-Since'] = rssCached.lastModified;
-
-        const protocol = url.startsWith('https') ? https : http;
-        const request = protocol.get(url, {
-          headers: {
-            'Accept': 'application/rss+xml, application/xml, text/xml, */*',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept-Language': 'en-US,en;q=0.9',
-            ...conditionalHeaders,
-          },
-          timeout: 15000
-        }, (response) => {
-          if ([301, 302, 303, 307, 308].includes(response.statusCode) && response.headers.location) {
-            const redirectUrl = response.headers.location.startsWith('http')
-              ? response.headers.location
-              : new URL(response.headers.location, url).href;
-            logThrottled('log', `rss-redirect:${feedUrl}:${redirectUrl}`, `[Relay] Following redirect to: ${redirectUrl}`);
-            return fetchWithRedirects(redirectUrl, redirectCount + 1);
+        const fetchWithRedirects = (url, redirectCount = 0) => {
+          if (redirectCount > 3) {
+            return sendError(502, 'Too many redirects');
           }
 
-          if (response.statusCode === 304 && rssCached) {
-            responseHandled = true;
-            rssCached.timestamp = Date.now();
-            resolveInFlight();
-            logThrottled('log', `rss-revalidated:${feedUrl}`, '[Relay] RSS 304 revalidated:', feedUrl);
-            sendCompressed(req, res, 200, {
-              'Content-Type': rssCached.contentType || 'application/xml',
-              'Cache-Control': 'public, max-age=300',
-              'CDN-Cache-Control': 'public, max-age=600, stale-while-revalidate=300',
-              'X-Cache': 'REVALIDATED',
-            }, rssCached.data);
-            return;
-          }
+          const conditionalHeaders = {};
+          if (rssCached?.etag) conditionalHeaders['If-None-Match'] = rssCached.etag;
+          if (rssCached?.lastModified) conditionalHeaders['If-Modified-Since'] = rssCached.lastModified;
 
-          const encoding = response.headers['content-encoding'];
-          let stream = response;
-          if (encoding === 'gzip' || encoding === 'deflate') {
-            stream = encoding === 'gzip' ? response.pipe(zlib.createGunzip()) : response.pipe(zlib.createInflate());
-          }
-
-          const chunks = [];
-          stream.on('data', chunk => chunks.push(chunk));
-          stream.on('end', () => {
-            if (responseHandled || res.headersSent) return;
-            responseHandled = true;
-            const data = Buffer.concat(chunks);
-            // Cache all responses: 2xx with full TTL, non-2xx with short TTL (negative cache)
-            // FIFO eviction: drop oldest-inserted entry if at capacity
-            if (rssResponseCache.size >= RSS_CACHE_MAX_ENTRIES && !rssResponseCache.has(feedUrl)) {
-              const oldest = rssResponseCache.keys().next().value;
-              if (oldest) rssResponseCache.delete(oldest);
+          const protocol = url.startsWith('https') ? https : http;
+          const request = protocol.get(url, {
+            headers: {
+              'Accept': 'application/rss+xml, application/xml, text/xml, */*',
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+              'Accept-Language': 'en-US,en;q=0.9',
+              ...conditionalHeaders,
+            },
+            timeout: 15000
+          }, (response) => {
+            if ([301, 302, 303, 307, 308].includes(response.statusCode) && response.headers.location) {
+              const redirectUrl = response.headers.location.startsWith('http')
+                ? response.headers.location
+                : new URL(response.headers.location, url).href;
+              logThrottled('log', `rss-redirect:${feedUrl}:${redirectUrl}`, `[Relay] Following redirect to: ${redirectUrl}`);
+              return fetchWithRedirects(redirectUrl, redirectCount + 1);
             }
-            rssResponseCache.set(feedUrl, {
-              data, contentType: 'application/xml', statusCode: response.statusCode, timestamp: Date.now(),
-              etag: response.headers['etag'] || null,
-              lastModified: response.headers['last-modified'] || null,
+
+            if (response.statusCode === 304 && rssCached) {
+              responseHandled = true;
+              rssCached.timestamp = Date.now();
+              resolveInFlight();
+              logThrottled('log', `rss-revalidated:${feedUrl}`, '[Relay] RSS 304 revalidated:', feedUrl);
+              sendCompressed(req, res, 200, {
+                'Content-Type': rssCached.contentType || 'application/xml',
+                'Cache-Control': 'public, max-age=300',
+                'CDN-Cache-Control': 'public, max-age=600, stale-while-revalidate=300',
+                'X-Cache': 'REVALIDATED',
+              }, rssCached.data);
+              return;
+            }
+
+            const encoding = response.headers['content-encoding'];
+            let stream = response;
+            if (encoding === 'gzip' || encoding === 'deflate') {
+              stream = encoding === 'gzip' ? response.pipe(zlib.createGunzip()) : response.pipe(zlib.createInflate());
+            }
+
+            const chunks = [];
+            stream.on('data', chunk => chunks.push(chunk));
+            stream.on('end', () => {
+              if (responseHandled || res.headersSent) return;
+              responseHandled = true;
+              const data = Buffer.concat(chunks);
+              // Cache all responses: 2xx with full TTL, non-2xx with short TTL (negative cache)
+              // FIFO eviction: drop oldest-inserted entry if at capacity
+              if (rssResponseCache.size >= RSS_CACHE_MAX_ENTRIES && !rssResponseCache.has(feedUrl)) {
+                const oldest = rssResponseCache.keys().next().value;
+                if (oldest) rssResponseCache.delete(oldest);
+              }
+              rssResponseCache.set(feedUrl, {
+                data, contentType: 'application/xml', statusCode: response.statusCode, timestamp: Date.now(),
+                etag: response.headers['etag'] || null,
+                lastModified: response.headers['last-modified'] || null,
+              });
+              if (response.statusCode < 200 || response.statusCode >= 300) {
+                logThrottled('warn', `rss-upstream:${feedUrl}:${response.statusCode}`, `[Relay] RSS upstream ${response.statusCode} for ${feedUrl}`);
+              }
+              resolveInFlight();
+              sendCompressed(req, res, response.statusCode, {
+                'Content-Type': 'application/xml',
+                'Cache-Control': response.statusCode >= 200 && response.statusCode < 300 ? 'public, max-age=300' : 'no-cache',
+                'CDN-Cache-Control': response.statusCode >= 200 && response.statusCode < 300 ? 'public, max-age=600, stale-while-revalidate=300' : 'no-store',
+                'X-Cache': 'MISS',
+              }, data);
             });
-            if (response.statusCode < 200 || response.statusCode >= 300) {
-              logThrottled('warn', `rss-upstream:${feedUrl}:${response.statusCode}`, `[Relay] RSS upstream ${response.statusCode} for ${feedUrl}`);
-            }
-            resolveInFlight();
-            sendCompressed(req, res, response.statusCode, {
-              'Content-Type': 'application/xml',
-              'Cache-Control': response.statusCode >= 200 && response.statusCode < 300 ? 'public, max-age=300' : 'no-cache',
-              'CDN-Cache-Control': response.statusCode >= 200 && response.statusCode < 300 ? 'public, max-age=600, stale-while-revalidate=300' : 'no-store',
-              'X-Cache': 'MISS',
-            }, data);
+            stream.on('error', (err) => {
+              logThrottled('error', `rss-decompress:${feedUrl}:${err.code || err.message}`, '[Relay] Decompression error:', err.message);
+              sendError(502, 'Decompression failed: ' + err.message);
+            });
           });
-          stream.on('error', (err) => {
-            logThrottled('error', `rss-decompress:${feedUrl}:${err.code || err.message}`, '[Relay] Decompression error:', err.message);
-            sendError(502, 'Decompression failed: ' + err.message);
-          });
-        });
 
-        request.on('error', (err) => {
-          logThrottled('error', `rss-error:${feedUrl}:${err.code || err.message}`, '[Relay] RSS error:', err.message);
-          // Serve stale on error
-          if (rssCached) {
-            if (!responseHandled && !res.headersSent) {
+          request.on('error', (err) => {
+            logThrottled('error', `rss-error:${feedUrl}:${err.code || err.message}`, '[Relay] RSS error:', err.message);
+            // Serve stale on error
+            if (rssCached) {
+              if (!responseHandled && !res.headersSent) {
+                responseHandled = true;
+                sendCompressed(req, res, 200, { 'Content-Type': 'application/xml', 'Cache-Control': 'no-store', 'CDN-Cache-Control': 'no-store', 'X-Cache': 'STALE' }, rssCached.data);
+              }
+              resolveInFlight();
+              return;
+            }
+            sendError(502, err.message);
+          });
+
+          request.on('timeout', () => {
+            request.destroy();
+            if (rssCached && !responseHandled && !res.headersSent) {
               responseHandled = true;
               sendCompressed(req, res, 200, { 'Content-Type': 'application/xml', 'Cache-Control': 'no-store', 'CDN-Cache-Control': 'no-store', 'X-Cache': 'STALE' }, rssCached.data);
+              resolveInFlight();
+              return;
             }
-            resolveInFlight();
-            return;
-          }
-          sendError(502, err.message);
-        });
+            sendError(504, 'Request timeout');
+          });
+        };
 
-        request.on('timeout', () => {
-          request.destroy();
-          if (rssCached && !responseHandled && !res.headersSent) {
-            responseHandled = true;
-            sendCompressed(req, res, 200, { 'Content-Type': 'application/xml', 'Cache-Control': 'no-store', 'CDN-Cache-Control': 'no-store', 'X-Cache': 'STALE' }, rssCached.data);
-            resolveInFlight();
-            return;
-          }
-          sendError(504, 'Request timeout');
-        });
-      };
-
-      fetchWithRedirects(feedUrl);
+        fetchWithRedirects(feedUrl);
       }); // end fetchPromise
 
       rssInFlight.set(feedUrl, fetchPromise);
-      fetchPromise.catch(() => {}).finally(() => rssInFlight.delete(feedUrl));
+      fetchPromise.catch(() => { }).finally(() => rssInFlight.delete(feedUrl));
     } catch (err) {
       if (feedUrl) rssInFlight.delete(feedUrl);
       if (!res.headersSent) {
@@ -3344,7 +3354,7 @@ const server = http.createServer(async (req, res) => {
 function connectUpstream() {
   // Skip if already connected or connecting
   if (upstreamSocket?.readyState === WebSocket.OPEN ||
-      upstreamSocket?.readyState === WebSocket.CONNECTING) return;
+    upstreamSocket?.readyState === WebSocket.CONNECTING) return;
 
   console.log('[Relay] Connecting to aisstream.io...');
   const socket = new WebSocket(AISSTREAM_URL);
@@ -3370,8 +3380,8 @@ function connectUpstream() {
     let processed = 0;
 
     while (processed < UPSTREAM_DRAIN_BATCH &&
-           getUpstreamQueueSize() > 0 &&
-           Date.now() - startedAt < UPSTREAM_DRAIN_BUDGET_MS) {
+      getUpstreamQueueSize() > 0 &&
+      Date.now() - startedAt < UPSTREAM_DRAIN_BUDGET_MS) {
       const raw = dequeueUpstreamMessage();
       if (!raw) break;
       processRawUpstreamMessage(raw);
@@ -3509,11 +3519,11 @@ async function gracefulShutdown(signal) {
         telegramState.client.disconnect(),
         new Promise(r => setTimeout(r, 3000)),
       ]);
-    } catch {}
+    } catch { }
     telegramState.client = null;
   }
   if (upstreamSocket) {
-    try { upstreamSocket.close(); } catch {}
+    try { upstreamSocket.close(); } catch { }
   }
   server.close(() => process.exit(0));
   setTimeout(() => process.exit(0), 5000);

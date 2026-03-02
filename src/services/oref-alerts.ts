@@ -241,13 +241,18 @@ export async function fetchOrefAlerts(): Promise<OrefAlertsResponse> {
     if (data.alerts.length) {
       translateAlerts(data.alerts).then((didTranslate) => {
         if (didTranslate) {
+          console.log('[OREF] Translated Missile Alerts:', applyTranslations(data.alerts));
           for (const cb of updateCallbacks) cb({ ...data, alerts: applyTranslations(data.alerts) });
         }
       }).catch(() => {});
     }
 
-    return { ...data, alerts: applyTranslations(data.alerts) };
+    const finalAlerts = applyTranslations(data.alerts);
+    console.log('[OREF] Fetched Missile Alerts:', finalAlerts);
+
+    return { ...data, alerts: finalAlerts };
   } catch (err) {
+    console.error('[OREF] Fetch Error:', err);
     return { configured: false, alerts: [], historyCount24h: 0, timestamp: new Date().toISOString(), error: String(err) };
   }
 }
