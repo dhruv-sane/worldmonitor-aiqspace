@@ -115,14 +115,66 @@ export async function fetchNaturalEvents(days = 30): Promise<NaturalEvent[]> {
 }
 
 async function fetchEonetEvents(days: number): Promise<NaturalEvent[]> {
-  try {
-    const url = `${EONET_API_URL}?status=open&days=${days}`;
-    const response = await fetch(url);
+  const url = `${EONET_API_URL}?status=open&days=${days}`;
+  const maxRetries = 3;
+  let attempts = 0;
+  let response: Response | null = null;
 
-    if (!response.ok) {
+  while (attempts < maxRetries) {
+    try {
+      response = await fetch(url);
+
+      if (response.ok) {
+        break; // Success
+      }
+
+      // Too Many Requests
+      if (response.status === 429) {
+        attempts++;
+        if (attempts >= maxRetries) throw new Error(`EONET API error: ${response.status} after ${maxRetries} attempts`);
+
+        let retryAfterMs = 2000 * Math.pow(2, attempts - 1); // Exponential fallback
+
+        // Try parsing the JSON response for "retry_after" field (in seconds)
+        // or the HTTP header "Retry-After"
+        try {
+          const retryHeader = response.headers.get('Retry-After');
+          if (retryHeader) {
+            const headerSeconds = parseInt(retryHeader, 10);
+            if (!isNaN(headerSeconds)) retryAfterMs = headerSeconds * 1000;
+          } else {
+            // EONET sometimes returns JSON like {"message": "...", "retry_after": 30}
+            const clonedResponse = response.clone();
+            const errorData = await clonedResponse.json();
+            if (errorData?.retry_after) {
+              retryAfterMs = errorData.retry_after * 1000;
+            }
+          }
+        } catch (e) {
+          // Ignore parse errors, use exponential fallback
+        }
+
+        console.warn(`[EONET] Rate limited (429). Retrying in ${retryAfterMs}ms (Attempt ${attempts}/${maxRetries})`);
+        await new Promise(resolve => setTimeout(resolve, retryAfterMs));
+        continue;
+      }
+
+      // Other error statuses
       throw new Error(`EONET API error: ${response.status}`);
-    }
 
+    } catch (error) {
+      if (attempts >= maxRetries || !(error instanceof TypeError)) { // Don't retry non-network/rate-limit errors infinitely
+        console.error('[EONET] Failed to fetch natural events:', error);
+        return [];
+      }
+      attempts++;
+      await new Promise(resolve => setTimeout(resolve, 2000 * Math.pow(2, attempts - 1)));
+    }
+  }
+
+  if (!response || !response.ok) return [];
+
+  try {
     const data: EonetResponse = await response.json();
     const events: NaturalEvent[] = [];
     const now = Date.now();

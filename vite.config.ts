@@ -299,51 +299,54 @@ function sebufApiPlugin(): Plugin {
       positiveEventsServerMod, positiveEventsHandlerMod,
       givingServerMod, givingHandlerMod,
       tradeServerMod, tradeHandlerMod,
+      supplyChainServerMod, supplyChainHandlerMod,
     ] = await Promise.all([
-        import('./server/router'),
-        import('./server/cors'),
-        import('./server/error-mapper'),
-        import('./src/generated/server/worldmonitor/seismology/v1/service_server'),
-        import('./server/worldmonitor/seismology/v1/handler'),
-        import('./src/generated/server/worldmonitor/wildfire/v1/service_server'),
-        import('./server/worldmonitor/wildfire/v1/handler'),
-        import('./src/generated/server/worldmonitor/climate/v1/service_server'),
-        import('./server/worldmonitor/climate/v1/handler'),
-        import('./src/generated/server/worldmonitor/prediction/v1/service_server'),
-        import('./server/worldmonitor/prediction/v1/handler'),
-        import('./src/generated/server/worldmonitor/displacement/v1/service_server'),
-        import('./server/worldmonitor/displacement/v1/handler'),
-        import('./src/generated/server/worldmonitor/aviation/v1/service_server'),
-        import('./server/worldmonitor/aviation/v1/handler'),
-        import('./src/generated/server/worldmonitor/research/v1/service_server'),
-        import('./server/worldmonitor/research/v1/handler'),
-        import('./src/generated/server/worldmonitor/unrest/v1/service_server'),
-        import('./server/worldmonitor/unrest/v1/handler'),
-        import('./src/generated/server/worldmonitor/conflict/v1/service_server'),
-        import('./server/worldmonitor/conflict/v1/handler'),
-        import('./src/generated/server/worldmonitor/maritime/v1/service_server'),
-        import('./server/worldmonitor/maritime/v1/handler'),
-        import('./src/generated/server/worldmonitor/cyber/v1/service_server'),
-        import('./server/worldmonitor/cyber/v1/handler'),
-        import('./src/generated/server/worldmonitor/economic/v1/service_server'),
-        import('./server/worldmonitor/economic/v1/handler'),
-        import('./src/generated/server/worldmonitor/infrastructure/v1/service_server'),
-        import('./server/worldmonitor/infrastructure/v1/handler'),
-        import('./src/generated/server/worldmonitor/market/v1/service_server'),
-        import('./server/worldmonitor/market/v1/handler'),
-        import('./src/generated/server/worldmonitor/news/v1/service_server'),
-        import('./server/worldmonitor/news/v1/handler'),
-        import('./src/generated/server/worldmonitor/intelligence/v1/service_server'),
-        import('./server/worldmonitor/intelligence/v1/handler'),
-        import('./src/generated/server/worldmonitor/military/v1/service_server'),
-        import('./server/worldmonitor/military/v1/handler'),
-        import('./src/generated/server/worldmonitor/positive_events/v1/service_server'),
-        import('./server/worldmonitor/positive-events/v1/handler'),
-        import('./src/generated/server/worldmonitor/giving/v1/service_server'),
-        import('./server/worldmonitor/giving/v1/handler'),
-        import('./src/generated/server/worldmonitor/trade/v1/service_server'),
-        import('./server/worldmonitor/trade/v1/handler'),
-      ]);
+      import('./server/router'),
+      import('./server/cors'),
+      import('./server/error-mapper'),
+      import('./src/generated/server/worldmonitor/seismology/v1/service_server'),
+      import('./server/worldmonitor/seismology/v1/handler'),
+      import('./src/generated/server/worldmonitor/wildfire/v1/service_server'),
+      import('./server/worldmonitor/wildfire/v1/handler'),
+      import('./src/generated/server/worldmonitor/climate/v1/service_server'),
+      import('./server/worldmonitor/climate/v1/handler'),
+      import('./src/generated/server/worldmonitor/prediction/v1/service_server'),
+      import('./server/worldmonitor/prediction/v1/handler'),
+      import('./src/generated/server/worldmonitor/displacement/v1/service_server'),
+      import('./server/worldmonitor/displacement/v1/handler'),
+      import('./src/generated/server/worldmonitor/aviation/v1/service_server'),
+      import('./server/worldmonitor/aviation/v1/handler'),
+      import('./src/generated/server/worldmonitor/research/v1/service_server'),
+      import('./server/worldmonitor/research/v1/handler'),
+      import('./src/generated/server/worldmonitor/unrest/v1/service_server'),
+      import('./server/worldmonitor/unrest/v1/handler'),
+      import('./src/generated/server/worldmonitor/conflict/v1/service_server'),
+      import('./server/worldmonitor/conflict/v1/handler'),
+      import('./src/generated/server/worldmonitor/maritime/v1/service_server'),
+      import('./server/worldmonitor/maritime/v1/handler'),
+      import('./src/generated/server/worldmonitor/cyber/v1/service_server'),
+      import('./server/worldmonitor/cyber/v1/handler'),
+      import('./src/generated/server/worldmonitor/economic/v1/service_server'),
+      import('./server/worldmonitor/economic/v1/handler'),
+      import('./src/generated/server/worldmonitor/infrastructure/v1/service_server'),
+      import('./server/worldmonitor/infrastructure/v1/handler'),
+      import('./src/generated/server/worldmonitor/market/v1/service_server'),
+      import('./server/worldmonitor/market/v1/handler'),
+      import('./src/generated/server/worldmonitor/news/v1/service_server'),
+      import('./server/worldmonitor/news/v1/handler'),
+      import('./src/generated/server/worldmonitor/intelligence/v1/service_server'),
+      import('./server/worldmonitor/intelligence/v1/handler'),
+      import('./src/generated/server/worldmonitor/military/v1/service_server'),
+      import('./server/worldmonitor/military/v1/handler'),
+      import('./src/generated/server/worldmonitor/positive_events/v1/service_server'),
+      import('./server/worldmonitor/positive-events/v1/handler'),
+      import('./src/generated/server/worldmonitor/giving/v1/service_server'),
+      import('./server/worldmonitor/giving/v1/handler'),
+      import('./src/generated/server/worldmonitor/trade/v1/service_server'),
+      import('./server/worldmonitor/trade/v1/handler'),
+      import('./src/generated/server/worldmonitor/supply_chain/v1/service_server'),
+      import('./server/worldmonitor/supply-chain/v1/handler'),
+    ]);
 
     const serverOptions = { onError: errorMod.mapErrorToResponse };
     const allRoutes = [
@@ -367,6 +370,7 @@ function sebufApiPlugin(): Plugin {
       ...positiveEventsServerMod.createPositiveEventsServiceRoutes(positiveEventsHandlerMod.positiveEventsHandler, serverOptions),
       ...givingServerMod.createGivingServiceRoutes(givingHandlerMod.givingHandler, serverOptions),
       ...tradeServerMod.createTradeServiceRoutes(tradeHandlerMod.tradeHandler, serverOptions),
+      ...supplyChainServerMod.createSupplyChainServiceRoutes(supplyChainHandlerMod.supplyChainHandler, serverOptions),
     ];
     cachedCorsMod = corsMod;
     return routerMod.createRouter(allRoutes);
@@ -383,8 +387,30 @@ function sebufApiPlugin(): Plugin {
       });
 
       server.middlewares.use(async (req, res, next) => {
-        // Only intercept sebuf routes: /api/{domain}/v1/* (domain may contain hyphens)
-        if (!req.url || !/^\/api\/[a-z-]+\/v1\//.test(req.url)) {
+        if (!req.url || !req.url.startsWith('/api/')) {
+          return next();
+        }
+
+        // Intercept OpenSky API locally because Railway relay is returning 410
+        if (req.url.startsWith('/api/opensky')) {
+          try {
+            const parsedUrl = new URL(req.url, `http://localhost:3000`);
+            const targetUrl = `https://opensky-network.org/api/states/all${parsedUrl.search}`;
+            const apiRes = await fetch(targetUrl, {
+              headers: { 'Accept': 'application/json' },
+            });
+            const text = await apiRes.text();
+            res.setHeader('Content-Type', 'application/json');
+            res.statusCode = apiRes.status;
+            res.end(text);
+          } catch (e) {
+            res.statusCode = 502;
+            res.end(JSON.stringify({ error: 'Direct OpenSky fetch failed' }));
+          }
+          return;
+        }
+
+        if (!/^\/api\/[a-z-]+\/v1\//.test(req.url)) {
           return next();
         }
 
@@ -533,7 +559,16 @@ const RSS_PROXY_ALLOWED_DOMAINS = new Set([
   'novayagazeta.eu', 'www.bangkokpost.com', 'vnexpress.net', 'www.abc.net.au',
   'news.ycombinator.com',
   // Finance variant
-  'www.coindesk.com', 'cointelegraph.com',
+  'www.coindesk.com', 'cointelegraph.com', 'seekingalpha.com',
+  // Security advisories — government travel advisory feeds
+  'travel.state.gov', 'www.smartraveller.gov.au', 'www.safetravel.govt.nz',
+  // US Embassy security alerts
+  'th.usembassy.gov', 'ae.usembassy.gov', 'de.usembassy.gov', 'ua.usembassy.gov',
+  'mx.usembassy.gov', 'in.usembassy.gov', 'pk.usembassy.gov', 'co.usembassy.gov',
+  'pl.usembassy.gov', 'bd.usembassy.gov', 'it.usembassy.gov', 'do.usembassy.gov',
+  'mm.usembassy.gov',
+  // Health advisories
+  'wwwnc.cdc.gov', 'www.ecdc.europa.eu', 'www.who.int', 'www.afro.who.int',
   // Happy variant — positive news sources
   'www.goodnewsnetwork.org', 'www.positive.news', 'reasonstobecheerful.world',
   'www.optimistdaily.com', 'www.sunnyskyz.com', 'www.huffpost.com',

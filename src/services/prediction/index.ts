@@ -73,7 +73,8 @@ let directFetchProbe: Promise<boolean> | null = null;
 async function probeDirectFetchCapability(): Promise<boolean> {
   if (directFetchWorks !== null) return directFetchWorks;
   if (!directFetchProbe) {
-    directFetchProbe = fetch(`${GAMMA_API}/events?closed=false&active=true&archived=false&order=volume&ascending=false&limit=1`, {
+    const url = encodeURIComponent(`${GAMMA_API}/events?closed=false&active=true&archived=false&order=volume&ascending=false&limit=1`);
+    directFetchProbe = fetch(`/api/cors-proxy?url=${url}`, {
       headers: { 'Accept': 'application/json' },
     })
       .then(resp => {
@@ -98,7 +99,8 @@ async function polyFetch(endpoint: 'events' | 'markets', params: Record<string, 
   const canUseDirect = directFetchWorks === true || (directFetchWorks === null && await probeDirectFetchCapability());
   if (canUseDirect) {
     try {
-      const resp = await fetch(`${GAMMA_API}/${endpoint}?${qs}`, {
+      const url = encodeURIComponent(`${GAMMA_API}/${endpoint}?${qs}`);
+      const resp = await fetch(`/api/cors-proxy?url=${url}`, {
         headers: { 'Accept': 'application/json' },
       });
       if (resp.ok) {
@@ -461,8 +463,8 @@ export async function fetchCountryMarkets(country: string): Promise<PredictionMa
           const candidates = eventTitleMatches
             ? event.markets.filter(m => !m.closed && !isExpired(m.endDate))
             : event.markets.filter(m =>
-                !m.closed && !isExpired(m.endDate) &&
-                variants.some(v => (m.question ?? '').toLowerCase().includes(v)));
+              !m.closed && !isExpired(m.endDate) &&
+              variants.some(v => (m.question ?? '').toLowerCase().includes(v)));
           if (candidates.length === 0) continue;
 
           const topMarket = candidates.reduce((best, m) => {

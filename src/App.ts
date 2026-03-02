@@ -16,6 +16,7 @@ import { dataFreshness } from '@/services/data-freshness';
 import { loadFromStorage, parseMapUrlState, saveToStorage, isMobileDevice } from '@/utils';
 import type { ParsedMapUrlState } from '@/utils';
 import { SignalModal, IntelligenceGapBadge, BreakingNewsBanner } from '@/components';
+import { Chatbot } from '@/components/Chatbot';
 import { initBreakingNewsAlerts, destroyBreakingNewsAlerts } from '@/services/breaking-news-alerts';
 import type { ServiceStatusPanel } from '@/components/ServiceStatusPanel';
 import type { StablecoinPanel } from '@/components/StablecoinPanel';
@@ -335,13 +336,13 @@ export class App {
     const aiFlow = getAiFlowSettings();
     if (aiFlow.browserModel || isDesktopRuntime()) {
       await mlWorker.init();
-      if (BETA_MODE) mlWorker.loadModel('summarization-beta').catch(() => {});
+      if (BETA_MODE) mlWorker.loadModel('summarization-beta').catch(() => { });
     }
 
     if (aiFlow.headlineMemory) {
       mlWorker.init().then(ok => {
-        if (ok) mlWorker.loadModel('embeddings').catch(() => {});
-      }).catch(() => {});
+        if (ok) mlWorker.loadModel('embeddings').catch(() => { });
+      }).catch(() => { });
     }
 
     this.unsubAiFlow = subscribeAiFlowChange((key) => {
@@ -356,10 +357,10 @@ export class App {
       if (key === 'headlineMemory') {
         if (isHeadlineMemoryEnabled()) {
           mlWorker.init().then(ok => {
-            if (ok) mlWorker.loadModel('embeddings').catch(() => {});
-          }).catch(() => {});
+            if (ok) mlWorker.loadModel('embeddings').catch(() => { });
+          }).catch(() => { });
         } else {
-          mlWorker.unloadModel('embeddings').catch(() => {});
+          mlWorker.unloadModel('embeddings').catch(() => { });
           const s = getAiFlowSettings();
           if (!s.browserModel && !isDesktopRuntime()) {
             mlWorker.terminate();
@@ -391,6 +392,8 @@ export class App {
 
     // Phase 2: Shared UI components
     this.state.signalModal = new SignalModal();
+    // GeoSentinel Chatbot
+    new Chatbot();
     this.state.signalModal.setLocationClickHandler((lat, lon) => {
       this.state.map?.setCenter(lat, lon, 4);
     });
@@ -564,10 +567,12 @@ export class App {
         { name: 'cables', fn: () => this.dataLoader.loadCableActivity(), intervalMs: 30 * 60 * 1000, condition: () => this.state.mapLayers.cables },
         { name: 'cableHealth', fn: () => this.dataLoader.loadCableHealth(), intervalMs: 2 * 60 * 60 * 1000, condition: () => this.state.mapLayers.cables },
         { name: 'flights', fn: () => this.dataLoader.loadFlightDelays(), intervalMs: 2 * 60 * 60 * 1000, condition: () => this.state.mapLayers.flights },
-        { name: 'cyberThreats', fn: () => {
-          this.state.cyberThreatsCache = null;
-          return this.dataLoader.loadCyberThreats();
-        }, intervalMs: 10 * 60 * 1000, condition: () => CYBER_LAYER_ENABLED && this.state.mapLayers.cyberThreats },
+        {
+          name: 'cyberThreats', fn: () => {
+            this.state.cyberThreatsCache = null;
+            return this.dataLoader.loadCyberThreats();
+          }, intervalMs: 10 * 60 * 1000, condition: () => CYBER_LAYER_ENABLED && this.state.mapLayers.cyberThreats
+        },
       ]);
     }
 

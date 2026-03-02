@@ -1,7 +1,7 @@
 {
   "app": {
-    "title": "World Monitor",
-    "description": "Global Situation with AI Insights"
+    "title": "GeoSentinel",
+    "description": "Global Intelligence Dashboard"
   },
   "countryBrief": {
     "identifying": "Identifying country...",
@@ -333,7 +333,7 @@
         "some": "Some features need API keys"
       },
       "openSettings": "Open Settings",
-      "skipSetup": "Skip the setup — a single World Monitor license unlocks everything. Join the waitlist for early access.",
+      "skipSetup": "Skip the setup — a single GeoSentinel license unlocks everything. Join the waitlist for early access.",
       "summary": {
         "desktop": "Desktop mode",
         "web": "Web mode (read-only, server-managed credentials)",
@@ -378,9 +378,9 @@
       "sidecarUnreachable": "Sidecar not reachable.",
       "logCleared": "Log cleared.",
       "worldMonitor": {
-        "tabLabel": "World Monitor",
+        "tabLabel": "GeoSentinel",
         "heroTitle": "One key. Everything included.",
-        "heroDescription": "A single World Monitor license replaces every API key and LLM provider you'd otherwise configure yourself. AI summaries, real-time intelligence, market data, conflict tracking, fire detection, satellite imagery — all powered, all managed, zero setup.",
+        "heroDescription": "A single GeoSentinel license replaces every API key and LLM provider you'd otherwise configure yourself. AI summaries, real-time intelligence, market data, conflict tracking, fire detection, satellite imagery — all powered, all managed, zero setup.",
         "apiKey": {
           "title": "License Key",
           "placeholder": "wm_xxxxxxxxxxxxxxxxxxxxxxxx",
@@ -391,7 +391,7 @@
         "dividerOr": "OR",
         "register": {
           "title": "Reserve Your Spot",
-          "description": "We're preparing to launch World Monitor licenses. Sign up now and be first in line — early members get priority access and founding-member pricing.",
+          "description": "We're preparing to launch GeoSentinel licenses. Sign up now and be first in line — early members get priority access and founding-member pricing.",
           "emailPlaceholder": "your@email.com",
           "submitBtn": "Join Waitlist",
           "submitting": "Submitting...",
@@ -997,12 +997,12 @@
       "aiFlowStatusDisabled": "No AI providers enabled",
       "insightsDisabledTitle": "AI analysis is disabled",
       "insightsDisabledHint": "Enable providers via the settings gear in the map header",
-    "sectionPanels": "Panels",
-    "badgeAnimLabel": "Badge Animations",
-    "badgeAnimDesc": "Animate update badges on panel headers",
-    "sectionIntelligence": "Intelligence",
-    "headlineMemoryLabel": "Headline Memory",
-    "headlineMemoryDesc": "Remember seen headlines to highlight new stories"
+      "sectionPanels": "Panels",
+      "badgeAnimLabel": "Badge Animations",
+      "badgeAnimDesc": "Animate update badges on panel headers",
+      "sectionIntelligence": "Intelligence",
+      "headlineMemoryLabel": "Headline Memory",
+      "headlineMemoryDesc": "Remember seen headlines to highlight new stories"
     },
     "cascade": {
       "noImpacts": "No country impacts detected",

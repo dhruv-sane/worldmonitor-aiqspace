@@ -239,7 +239,7 @@ async function main() {
     process.exit(1);
   }
 
-  const dataPath = join(__dirname, 'data', 'military-bases-final.json');
+  const dataPath = join(__dirname, 'data', 'curated-bases.json');
   if (!existsSync(dataPath)) {
     console.error(`Data file not found: ${dataPath}`);
     process.exit(1);

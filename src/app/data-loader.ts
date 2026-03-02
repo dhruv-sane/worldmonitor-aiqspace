@@ -1195,6 +1195,7 @@ export class DataLoaderManager implements AppModule {
     tasks.push((async () => {
       try {
         const conflictData = await fetchConflictEvents();
+        console.log('[API Data] fetched Conflict Events (ACLED):', conflictData);
         ingestConflictsForCII(conflictData.events);
         if (conflictData.count > 0) dataFreshness.recordUpdate('acled_conflict', conflictData.count);
       } catch (error) {
@@ -1293,6 +1294,7 @@ export class DataLoaderManager implements AppModule {
       try {
         const protestEvents = await protestsTask;
         let result = await fetchUcdpEvents();
+        console.log('[API Data] fetched UCDP Events:', result);
         for (let attempt = 1; attempt < 3 && !result.success; attempt++) {
           await new Promise(r => setTimeout(r, 15_000));
           result = await fetchUcdpEvents();
@@ -1498,6 +1500,7 @@ export class DataLoaderManager implements AppModule {
   async loadIranEvents(): Promise<void> {
     try {
       const events = await fetchIranEvents();
+      console.log('[API Data] fetched Iran Missile/Conflict Events:', events);
       this.ctx.intelligenceCache.iranEvents = events;
       this.ctx.map?.setIranEvents(events);
       this.ctx.map?.setLayerReady('iranAttacks', events.length > 0);
@@ -1710,6 +1713,8 @@ export class DataLoaderManager implements AppModule {
         fetchMilitaryFlights(),
         fetchMilitaryVessels(),
       ]);
+      console.log('[API Data] fetched Military Flights:', flightData);
+      console.log('[API Data] fetched Military Vessels:', vesselData);
       this.ctx.intelligenceCache.military = {
         flights: flightData.flights,
         flightClusters: flightData.clusters,
@@ -1718,7 +1723,7 @@ export class DataLoaderManager implements AppModule {
       };
       fetchUSNIFleetReport().then((report) => {
         if (report) this.ctx.intelligenceCache.usniFleet = report;
-      }).catch(() => {});
+      }).catch(() => { });
       this.ctx.map?.setMilitaryFlights(flightData.flights, flightData.clusters);
       this.ctx.map?.setMilitaryVessels(vesselData.vessels, vesselData.clusters);
       ingestFlights(flightData.flights);
@@ -2200,7 +2205,7 @@ export class DataLoaderManager implements AppModule {
     setPersistentCache(
       DataLoaderManager.HAPPY_ITEMS_CACHE_KEY,
       this.ctx.happyAllItems.map(item => ({ ...item, pubDate: item.pubDate.getTime() }))
-    ).catch(() => {});
+    ).catch(() => { });
   }
 
   private async loadPositiveEvents(): Promise<void> {

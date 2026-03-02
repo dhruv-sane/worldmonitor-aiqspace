@@ -213,8 +213,7 @@ if (import.meta.env.DEV) {
   const allChannels = [...FULL_LIVE_CHANNELS, ...TECH_LIVE_CHANNELS, ...OPTIONAL_LIVE_CHANNELS];
   for (const id of Object.keys(DIRECT_HLS_MAP)) {
     const ch = allChannels.find(c => c.id === id);
-    if (!ch) console.error(`[LiveNews] DIRECT_HLS_MAP key '${id}' has no matching channel`);
-    else if (!ch.fallbackVideoId) console.error(`[LiveNews] Channel '${id}' in DIRECT_HLS_MAP lacks fallbackVideoId`);
+    if (!ch) console.warn(`[LiveNews] DIRECT_HLS_MAP key '${id}' has no matching channel`);
   }
 }
 
@@ -1101,7 +1100,7 @@ export class LiveNewsPanel extends Panel {
         if (wantUnmute && this.nativeVideoElement === video) {
           video.muted = false;
         }
-      }).catch(() => {});
+      }).catch(() => { });
     }
   }
 
@@ -1109,7 +1108,7 @@ export class LiveNewsPanel extends Panel {
     if (!this.nativeVideoElement) return;
     this.nativeVideoElement.muted = this.isMuted;
     if (this.isPlaying) {
-      this.nativeVideoElement.play()?.catch(() => {});
+      this.nativeVideoElement.play()?.catch(() => { });
     } else {
       this.nativeVideoElement.pause();
     }
