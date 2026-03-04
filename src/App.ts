@@ -17,6 +17,7 @@ import { loadFromStorage, parseMapUrlState, saveToStorage, isMobileDevice } from
 import type { ParsedMapUrlState } from '@/utils';
 import { SignalModal, IntelligenceGapBadge, BreakingNewsBanner } from '@/components';
 import { Chatbot } from '@/components/Chatbot';
+import type { ChatContextProvider } from '@/components/Chatbot';
 import { initBreakingNewsAlerts, destroyBreakingNewsAlerts } from '@/services/breaking-news-alerts';
 import type { ServiceStatusPanel } from '@/components/ServiceStatusPanel';
 import type { StablecoinPanel } from '@/components/StablecoinPanel';
@@ -392,8 +393,73 @@ export class App {
 
     // Phase 2: Shared UI components
     this.state.signalModal = new SignalModal();
-    // GeoSentinel Chatbot
-    new Chatbot();
+    // GeoSentinel Chatbot — query-aware context with latest data first
+    const chatContextProvider: ChatContextProvider = (userQuery: string) => {
+      const now = Date.now();
+      // Sort all news by pubDate descending so newest items come first
+      const allNews = [...(this.state.allNews || [])]
+        .sort((a, b) => new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime());
+      // Sort clusters by lastUpdated descending
+      const clusters = [...(this.state.latestClusters || [])]
+        .sort((a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime());
+
+      // Helper: relative time label
+      const ago = (d: Date): string => {
+        const mins = Math.round((now - new Date(d).getTime()) / 60000);
+        if (mins < 1) return 'just now';
+        if (mins < 60) return `${mins}m ago`;
+        const hrs = Math.round(mins / 60);
+        if (hrs < 24) return `${hrs}h ago`;
+        return `${Math.round(hrs / 24)}d ago`;
+      };
+
+      // --- Keyword search through all news (newest first) ---
+      const queryWords = userQuery.toLowerCase()
+        .split(/\s+/)
+        .filter((w) => w.length > 2)
+        .filter((w) => !['the', 'what', 'are', 'how', 'where', 'when', 'which', 'about', 'this', 'that', 'with', 'from', 'have', 'has', 'was', 'were', 'been', 'being', 'does', 'did', 'can', 'tell'].includes(w));
+
+      const matchedNews: string[] = [];
+      if (queryWords.length > 0) {
+        for (const item of allNews) {
+          const titleLower = item.title.toLowerCase();
+          const locationLower = (item.locationName || '').toLowerCase();
+          const hit = queryWords.some((kw) => titleLower.includes(kw) || locationLower.includes(kw));
+          if (hit) {
+            const loc = item.locationName ? ` [${item.locationName}]` : '';
+            const src = item.source ? ` (${item.source})` : '';
+            const time = item.pubDate ? ` — ${ago(item.pubDate)}` : '';
+            matchedNews.push(`${item.title}${loc}${src}${time}`);
+          }
+          if (matchedNews.length >= 15) break;
+        }
+      }
+
+      // --- Top clustered events (multi-source trending, newest first) ---
+      const clusterSummaries = clusters
+        .slice(0, 8)
+        .map((c) => {
+          const sources = c.sourceCount > 1 ? ` [${c.sourceCount} sources]` : '';
+          const time = c.lastUpdated ? ` — ${ago(c.lastUpdated)}` : '';
+          return `${c.primaryTitle}${sources}${time}`;
+        });
+
+      // --- General recent headlines (newest first, with timestamps) ---
+      const recentHeadlines = allNews
+        .slice(0, 10)
+        .map((n) => {
+          const time = n.pubDate ? ` — ${ago(n.pubDate)}` : '';
+          return `${n.title}${time}`;
+        });
+
+      // --- Active map layers ---
+      const activeLayers = Object.entries(this.state.mapLayers)
+        .filter(([, v]) => v)
+        .map(([k]) => k);
+
+      return { recentHeadlines, matchedNews, clusterSummaries, activeLayers };
+    };
+    new Chatbot(chatContextProvider);
     this.state.signalModal.setLocationClickHandler((lat, lon) => {
       this.state.map?.setCenter(lat, lon, 4);
     });

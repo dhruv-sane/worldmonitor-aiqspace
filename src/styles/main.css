@@ -17389,6 +17389,25 @@ body {
   border-bottom-right-radius: 4px;
 }
 
+/* Bot message formatted content */
+.gs-chat-msg.bot strong {
+  font-weight: 700;
+  color: #f1f5f9;
+}
+
+[data-theme="light"] .gs-chat-msg.bot strong {
+  color: #0f172a;
+}
+
+.gs-chat-bullet {
+  padding-left: 12px;
+  margin: 2px 0;
+}
+
+.gs-chat-spacer {
+  height: 6px;
+}
+
 .gs-chatbot-input-row {
   display: flex;
   align-items: center;

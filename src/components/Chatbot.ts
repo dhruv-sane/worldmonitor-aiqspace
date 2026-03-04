@@ -1,6 +1,6 @@
 /**
- * GeoSentinel Chatbot — client-side FAQ assistant
- * No external API required; uses pattern-matching for common questions.
+ * GeoSentinel Chatbot — LLM-powered war & conflict assistant
+ * Connects to /api/chat (Azure OpenAI) with query-aware live context.
  */
 
 interface ChatMessage {
@@ -8,61 +8,55 @@ interface ChatMessage {
     text: string;
 }
 
-const FAQ_PATTERNS: Array<{ patterns: RegExp[]; reply: string }> = [
-    {
-        patterns: [/what\s*is\s*(this|geosentinel)/i, /about/i, /who\s*made/i, /what\s*does\s*this\s*do/i],
-        reply:
-            'GeoSentinel is an AI-powered global intelligence dashboard. It aggregates live news, market data, military tracking, infrastructure monitoring, and geopolitical signals into a single real-time view.',
-    },
-    {
-        patterns: [/how\s*(to|do\s*i)\s*use/i, /help/i, /getting\s*started/i, /tutorial/i],
-        reply:
-            'Use the map to explore hotspots, toggle data layers with the panel on the left, and click any marker for details. Press Ctrl+K (or ⌘K) to open the command palette for quick navigation. The panels below the map show live feeds for news, markets, conflicts, and more.',
-    },
-    {
-        patterns: [/layers?/i, /map\s*layers?/i, /toggle/i, /what\s*can\s*i\s*see/i],
-        reply:
-            'Available map layers include: Intel Hotspots, Conflict Zones, Military Bases, Undersea Cables, Nuclear Facilities, Pipelines, Earthquakes, Weather Alerts, Military Flights & Vessels, Protests, Internet Outages, Trade Routes, and more. Toggle them from the layer panel on the map.',
-    },
-    {
-        patterns: [/data\s*source/i, /where.*data/i, /sources?/i, /feeds?/i],
-        reply:
-            'GeoSentinel aggregates data from: ACLED (conflicts), OpenSky/ADS-B (flights), AIS (vessels), USGS (earthquakes), NOAA (weather), GDELT (news), FIRMS (fires), Polymarket (predictions), FRED (economics), and many more open-source intelligence feeds.',
-    },
-    {
-        patterns: [/search/i, /command/i, /keyboard/i, /shortcut/i],
-        reply:
-            'Press Ctrl+K (⌘K on Mac) to open the command palette. You can search for countries, hotspots, infrastructure, toggle layers, and navigate between views — all from the keyboard.',
-    },
-    {
-        patterns: [/country/i, /intelligence\s*brief/i, /instability/i, /cii/i],
-        reply:
-            'Click any country on the map to view its Intelligence Brief. This includes an AI-generated instability index, active signals (protests, military, outages), recent news, prediction markets, and infrastructure exposure analysis.',
-    },
-    {
-        patterns: [/theme/i, /dark\s*mode/i, /light\s*mode/i],
-        reply:
-            'Toggle between dark and light mode using the theme button in the header. The map and all panels will adjust automatically.',
-    },
-    {
-        patterns: [/mobile/i, /phone/i, /tablet/i],
-        reply:
-            'On mobile devices, GeoSentinel uses a simplified SVG-based map with essential layers pre-enabled. The full WebGL experience is available on desktop browsers.',
-    },
-];
+/**
+ * Callback that returns contextual data from the app state.
+ * Accepts the user's query so it can search for relevant news.
+ */
+export type ChatContextProvider = (userQuery: string) => {
+    /** Recent news headlines (top 10 general) */
+    recentHeadlines: string[];
+    /** News items matching the user's query keywords */
+    matchedNews: string[];
+    /** Clustered multi-source event summaries */
+    clusterSummaries: string[];
+    /** Currently active map layers */
+    activeLayers: string[];
+    /** Optional: selected country or region */
+    focusRegion?: string;
+};
 
-const FALLBACK_REPLY =
-    "I can help with questions about GeoSentinel! Try asking:\n• \"What is this?\"\n• \"How do I use the map?\"\n• \"What layers are available?\"\n• \"Where does the data come from?\"\n• \"What keyboard shortcuts exist?\"";
+/**
+ * Build context string from live app data, including query-matched results.
+ * Stays under ~800 tokens to prevent hallucination while being informative.
+ */
+function buildContextString(provider: ChatContextProvider, userQuery: string): string {
+    const ctx = provider(userQuery);
+    const parts: string[] = [];
 
-function matchFaq(input: string): string {
-    const lower = input.toLowerCase().trim();
-    if (!lower) return FALLBACK_REPLY;
-    for (const faq of FAQ_PATTERNS) {
-        for (const pat of faq.patterns) {
-            if (pat.test(lower)) return faq.reply;
-        }
+    if (ctx.focusRegion) {
+        parts.push(`User is focused on: ${ctx.focusRegion}`);
     }
-    return FALLBACK_REPLY;
+
+    if (ctx.activeLayers.length > 0) {
+        parts.push(`Active map layers: ${ctx.activeLayers.slice(0, 8).join(', ')}`);
+    }
+
+    // Query-matched news first (most relevant)
+    if (ctx.matchedNews.length > 0) {
+        parts.push(`News matching user query:\n${ctx.matchedNews.map((h, i) => `${i + 1}. ${h}`).join('\n')}`);
+    }
+
+    // Multi-source clustered events
+    if (ctx.clusterSummaries.length > 0) {
+        parts.push(`Trending multi-source events:\n${ctx.clusterSummaries.map((s, i) => `${i + 1}. ${s}`).join('\n')}`);
+    }
+
+    // General recent headlines
+    if (ctx.recentHeadlines.length > 0) {
+        parts.push(`Recent headlines:\n${ctx.recentHeadlines.map((h, i) => `${i + 1}. ${h}`).join('\n')}`);
+    }
+
+    return parts.join('\n\n') || 'No live context available.';
 }
 
 export class Chatbot {
@@ -70,8 +64,12 @@ export class Chatbot {
     private win: HTMLDivElement | null = null;
     private messages: ChatMessage[] = [];
     private open = false;
+    private contextProvider: ChatContextProvider;
+    private isSending = false;
 
-    constructor() {
+    constructor(contextProvider: ChatContextProvider) {
+        this.contextProvider = contextProvider;
+
         // Floating action button
         this.fab = document.createElement('button');
         this.fab.className = 'gs-chatbot-fab';
@@ -123,13 +121,14 @@ export class Chatbot {
         input.className = 'gs-chatbot-input';
         input.id = 'gsChatbotInput';
         input.type = 'text';
-        input.placeholder = 'Ask me anything…';
+        input.placeholder = 'Ask about wars, conflicts, geopolitics…';
         input.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') this.send();
         });
 
         const sendBtn = document.createElement('button');
         sendBtn.className = 'gs-chatbot-send';
+        sendBtn.id = 'gsChatbotSendBtn';
         sendBtn.innerHTML = '➤';
         sendBtn.addEventListener('click', () => this.send());
 
@@ -141,7 +140,7 @@ export class Chatbot {
 
         // Show greeting if first time
         if (this.messages.length === 0) {
-            this.addBotMessage("Hi! 👋 I'm the GeoSentinel assistant. Ask me about the dashboard, map layers, data sources, or keyboard shortcuts.");
+            this.addBotMessage("Hi! 👋 I'm the GeoSentinel assistant. Ask me about ongoing wars, conflicts, military movements, or geopolitical news from the dashboard.");
         } else {
             this.renderMessages();
         }
@@ -159,7 +158,8 @@ export class Chatbot {
         }
     }
 
-    private send(): void {
+    private async send(): Promise<void> {
+        if (this.isSending) return;
         const input = document.getElementById('gsChatbotInput') as HTMLInputElement | null;
         if (!input) return;
         const text = input.value.trim();
@@ -169,13 +169,53 @@ export class Chatbot {
         this.messages.push({ role: 'user', text });
         this.renderMessages();
 
-        // Show typing indicator, then respond
+        // Disable send button while processing
+        this.isSending = true;
+        this.setSendEnabled(false);
         this.showTyping();
-        setTimeout(() => {
+
+        try {
+            // Pass the user's query so context provider can search for relevant news
+            const context = buildContextString(this.contextProvider, text);
+            const resp = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    messages: this.messages,
+                    context,
+                }),
+                signal: AbortSignal.timeout(35000),
+            });
+
             this.hideTyping();
-            const reply = matchFaq(text);
-            this.addBotMessage(reply);
-        }, 500 + Math.random() * 400);
+
+            if (!resp.ok) {
+                const errData = await resp.json().catch(() => ({}));
+                const errMsg = (errData as { error?: string }).error || 'Something went wrong.';
+                this.addBotMessage(`⚠️ ${errMsg}`);
+            } else {
+                const data = await resp.json() as { reply: string };
+                this.addBotMessage(data.reply);
+            }
+        } catch (err) {
+            this.hideTyping();
+            if (err instanceof DOMException && err.name === 'TimeoutError') {
+                this.addBotMessage('⚠️ Request timed out. Please try again.');
+            } else {
+                this.addBotMessage('⚠️ Could not reach the server. Please try again later.');
+            }
+        } finally {
+            this.isSending = false;
+            this.setSendEnabled(true);
+        }
+    }
+
+    private setSendEnabled(enabled: boolean): void {
+        const btn = document.getElementById('gsChatbotSendBtn') as HTMLButtonElement | null;
+        if (btn) {
+            btn.disabled = !enabled;
+            btn.style.opacity = enabled ? '1' : '0.5';
+        }
     }
 
     private addBotMessage(text: string): void {
@@ -190,10 +230,51 @@ export class Chatbot {
         for (const msg of this.messages) {
             const bubble = document.createElement('div');
             bubble.className = `gs-chat-msg ${msg.role}`;
-            bubble.textContent = msg.text;
+            // Render markdown for bot messages, plain text for user
+            bubble.innerHTML = msg.role === 'bot'
+                ? this.renderMarkdown(msg.text)
+                : this.escapeHtml(msg.text);
             container.appendChild(bubble);
         }
         container.scrollTop = container.scrollHeight;
+    }
+
+    private escapeHtml(str: string): string {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
+    /** Lightweight markdown renderer for chatbot responses */
+    private renderMarkdown(text: string): string {
+        return text
+            .split('\n')
+            .map((line) => {
+                // Escape HTML first
+                let l = this.escapeHtml(line);
+                // Bold: **text**
+                l = l.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+                // Italic: *text*
+                l = l.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>');
+                // Bullet points: - item or • item
+                if (/^\s*[-•]\s/.test(l)) {
+                    l = `<div class="gs-chat-bullet">${l.replace(/^\s*[-•]\s*/, '• ')}</div>`;
+                }
+                // Numbered list: 1. item
+                else if (/^\s*\d+\.\s/.test(l)) {
+                    l = `<div class="gs-chat-bullet">${l}</div>`;
+                }
+                // Empty line = spacing
+                else if (l.trim() === '') {
+                    l = '<div class="gs-chat-spacer"></div>';
+                }
+                // Normal line
+                else {
+                    l = `<div>${l}</div>`;
+                }
+                return l;
+            })
+            .join('');
     }
 
     private showTyping(): void {

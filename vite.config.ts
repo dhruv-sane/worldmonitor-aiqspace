@@ -1,4 +1,4 @@
-import { defineConfig, type Plugin } from 'vite';
+import { defineConfig, loadEnv, type Plugin } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import { resolve, dirname, extname } from 'path';
 import { mkdir, readFile, writeFile } from 'fs/promises';
@@ -699,6 +699,172 @@ function youtubeLivePlugin(): Plugin {
   };
 }
 
+/**
+ * Search DuckDuckGo HTML lite for web results.
+ * Returns up to `limit` results as "title — snippet" strings.
+ */
+async function searchDuckDuckGo(query: string, limit = 5): Promise<string[]> {
+  try {
+    const params = new URLSearchParams({ q: query, kl: 'wt-wt' });
+    const resp = await fetch(`https://html.duckduckgo.com/html/?${params}`, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html',
+      },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!resp.ok) return [];
+    const html = await resp.text();
+
+    // Parse results from DDG HTML lite — each result is in a <a class="result__a"> + <a class="result__snippet">
+    const results: string[] = [];
+    const titleRegex = /<a[^>]*class="result__a"[^>]*>(.*?)<\/a>/gs;
+    const snippetRegex = /<a[^>]*class="result__snippet"[^>]*>(.*?)<\/a>/gs;
+
+    const titles: string[] = [];
+    const snippets: string[] = [];
+    let match;
+    while ((match = titleRegex.exec(html)) !== null) {
+      titles.push(match[1].replace(/<[^>]*>/g, '').trim());
+    }
+    while ((match = snippetRegex.exec(html)) !== null) {
+      snippets.push(match[1].replace(/<[^>]*>/g, '').trim());
+    }
+
+    for (let i = 0; i < Math.min(titles.length, limit); i++) {
+      const snippet = snippets[i] ? ` — ${snippets[i]}` : '';
+      results.push(`${titles[i]}${snippet}`);
+    }
+    return results;
+  } catch (err) {
+    console.error('[chat-api] DuckDuckGo search error:', err);
+    return [];
+  }
+}
+
+function chatApiPlugin(): Plugin {
+  return {
+    name: 'chat-api',
+    configureServer(server) {
+      // Load ALL env vars (not just VITE_ prefixed) from .env files
+      const env = loadEnv('development', process.cwd(), '');
+
+      server.middlewares.use(async (req, res, next) => {
+        if (!req.url?.startsWith('/api/chat') || req.method !== 'POST') {
+          return next();
+        }
+
+        const endpoint = env.AZURE_OPENAI_ENDPOINT;
+        const apiKey = env.AZURE_OPENAI_API_KEY;
+        const apiVersion = env.AZURE_OPENAI_API_VERSION || '2024-12-01-preview';
+        const deploymentName = env.AZURE_OPENAI_DEPLOYMENT_NAME || 'gpt-5.2-chat';
+
+        res.setHeader('Content-Type', 'application/json');
+
+        if (!endpoint || !apiKey) {
+          res.statusCode = 500;
+          res.end(JSON.stringify({ error: 'Azure OpenAI not configured' }));
+          return;
+        }
+
+        // Read POST body
+        const chunks: Buffer[] = [];
+        for await (const chunk of req) {
+          chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+        }
+        let body: any;
+        try {
+          body = JSON.parse(Buffer.concat(chunks).toString());
+        } catch {
+          res.statusCode = 400;
+          res.end(JSON.stringify({ error: 'Invalid JSON body' }));
+          return;
+        }
+
+        const { messages, context } = body;
+        if (!messages || !Array.isArray(messages)) {
+          res.statusCode = 400;
+          res.end(JSON.stringify({ error: 'messages array is required' }));
+          return;
+        }
+
+        // Get the user's latest message for web search
+        const latestUserMsg = [...messages].reverse().find((m: any) => m.role === 'user')?.text || '';
+
+        // Search DuckDuckGo for latest web news (runs concurrently, 5s timeout)
+        let webResults: string[] = [];
+        if (latestUserMsg.length > 3) {
+          webResults = await searchDuckDuckGo(`${latestUserMsg} latest news war conflict`);
+        }
+
+        const webSection = webResults.length > 0
+          ? `\n\nWEB SEARCH RESULTS (from DuckDuckGo):\n${webResults.map((r, i) => `${i + 1}. ${r}`).join('\n')}`
+          : '';
+
+        const systemPrompt = `You are GeoSentinel Assistant, an AI for a real-time global intelligence dashboard.
+You ONLY answer questions about:
+- Wars, armed conflicts, military operations
+- Geopolitical tensions, sanctions, diplomacy related to conflicts
+- News about ongoing wars and conflict zones
+- Data visible on the dashboard (conflict zones, military flights, protests, etc.)
+
+RULES:
+- If a question is unrelated to wars, conflicts, or geopolitical news, politely decline.
+- Keep answers concise but informative (3-6 sentences).
+- The CONTEXT below contains LIVE dashboard data AND web search results. USE BOTH to give specific, detailed, up-to-date answers.
+- If matched news items are provided, reference them directly in your answer.
+- Do NOT say "the dashboard doesn't show this" — check the web search results too.
+- If there truly is no relevant data anywhere, say so honestly.
+
+FORMATTING:
+- Use relevant emojis to make responses visually engaging (e.g. ⚔️ for war, 🚀 for missiles, 📰 for news, 🌍 for regions, ⚠️ for alerts, 🛡️ for defense, 💥 for strikes, 🏴 for groups).
+- Use **bold** for key terms, country names, and important details.
+- Use bullet points (- ) for listing multiple items.
+- Add blank lines between sections for readability.
+- Structure longer answers with clear sections.
+
+LIVE CONTEXT (from dashboard):
+${context || 'No live context available.'}${webSection}`;
+
+        const apiMessages = [
+          { role: 'system', content: systemPrompt },
+          ...messages.slice(-6).map((m: any) => ({
+            role: m.role === 'bot' ? 'assistant' : 'user',
+            content: m.text,
+          })),
+        ];
+
+        const azureUrl = `${endpoint.replace(/\/$/, '')}/openai/deployments/${deploymentName}/chat/completions?api-version=${apiVersion}`;
+
+        try {
+          const aiResp = await fetch(azureUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'api-key': apiKey },
+            body: JSON.stringify({ messages: apiMessages, max_completion_tokens: 500 }),
+            signal: AbortSignal.timeout(30000),
+          });
+
+          if (!aiResp.ok) {
+            const errText = await aiResp.text().catch(() => 'unknown');
+            console.error('[chat-api] Azure error:', aiResp.status, errText);
+            res.statusCode = 502;
+            res.end(JSON.stringify({ error: 'Azure OpenAI returned an error' }));
+            return;
+          }
+
+          const data: any = await aiResp.json();
+          const reply = data.choices?.[0]?.message?.content || "I couldn't generate a response.";
+          res.end(JSON.stringify({ reply }));
+        } catch (err) {
+          console.error('[chat-api] Fetch error:', err);
+          res.statusCode = 502;
+          res.end(JSON.stringify({ error: 'Failed to reach Azure OpenAI' }));
+        }
+      });
+    },
+  };
+}
+
 export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
@@ -708,6 +874,7 @@ export default defineConfig({
     polymarketPlugin(),
     rssProxyPlugin(),
     youtubeLivePlugin(),
+    chatApiPlugin(),
     sebufApiPlugin(),
     brotliPrecompressPlugin(),
     VitePWA({
